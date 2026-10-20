@@ -26,7 +26,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": "app",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "targets": ["app", "dmg"],
+    "category": "Music",
+    "shortDescription": "Minimal Spotify player",
+    "longDescription": "A minimal, text-only Spotify player. Requires Spotify Premium and your own Spotify developer Client ID.",
+    "copyright": "Copyright (c) 2026 Stefan Larsson",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "macOS": { "minimumSystemVersion": "11.0", "signingIdentity": "-" }
   }
 }
