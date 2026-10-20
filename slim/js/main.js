@@ -112,6 +112,7 @@ async function setZoom(z) {
   store.set('zoom', zoom);
   try {
     await TAURI.invoke('plugin:webview|set_webview_zoom', { label: TAURI.metadata.currentWebview.label, value: zoom });
+    document.documentElement.style.setProperty('--zoom', String(zoom));
     toast(`Zoom ${Math.round(zoom * 100)}%`, 900);
   } catch (e) { fail(e); }
 }
@@ -884,6 +885,7 @@ async function start(cb) {
 (async () => {
   if (TAURI) {
     document.documentElement.classList.add('tauri');
+    document.documentElement.style.setProperty('--zoom', String(zoom));
     if (zoom !== 1) TAURI.invoke('plugin:webview|set_webview_zoom', { label: TAURI.metadata.currentWebview.label, value: zoom }).catch(() => {});
   }
   applyTheme(store.get('theme', '') || 'auto');

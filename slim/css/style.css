@@ -93,8 +93,10 @@ html.tauri header { padding-top: 12px; }
 @media (min-width: 601px) {
   html.side-hidden #app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "bar"; }
   html.side-hidden #side { display: none; }
-  /* the macOS traffic lights sit where the sidebar used to be */
-  html.tauri.side-hidden header { padding-left: 92px; }
+  /* The macOS traffic lights sit where the sidebar used to be. They are native, so they keep
+     their size when the page is zoomed (cmd +/-); --zoom (set from main.js) scales the gap
+     back so the button always starts ~90 device px from the window edge. */
+  html.tauri.side-hidden header { padding-left: calc(90px / var(--zoom, 1)); }
 }
 
 /* sidebar ---------------------------------------------------------- */
