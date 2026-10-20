@@ -51,10 +51,11 @@ const Q = { queue: [], idx: -1, userCount: 0 };
 export const getMe = async () => ({ id: 'me', name: 'you' });
 export const getPlaylists = async () => (await delay(), PLAYLISTS.map(({ tracks, ...p }) => p));
 export const getLiked = async (offset = 0) => (await delay(), slice(LIKED, offset, 50));
-export const getPlaylistTracks = async (id, offset = 0) => {
+export const getPlaylistTracks = async (id, offset = 0, fallback = false) => {
   await delay();
   const pl = PLAYLISTS.find((p) => p.id === id);
-  if (pl.locked) throw Object.assign(new Error('Spotify API 403'), { status: 403 });
+  // Someone else's playlist: only readable through the (fake) fallback sign-in.
+  if (pl.locked && !fallback) throw Object.assign(new Error('Spotify API 403'), { status: 403 });
   return slice(pl.tracks, offset, 100);
 };
 export const search = async (q, offset = 0) => {

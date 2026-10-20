@@ -44,6 +44,7 @@
     </nav>
     <div class="side-foot">
       <button id="theme" class="link" title="Switch theme (t)">theme: auto</button>
+      <button id="fb" class="link" title="Optional fallback sign-in for reading other people’s playlists" hidden>fallback: off</button>
       <button id="help" class="link" title="Keyboard shortcuts (?)">?</button>
       <button id="logout" class="link">log out</button>
     </div>
@@ -87,6 +88,7 @@
 <div id="picker" hidden>
   <div class="pk" role="dialog" aria-label="Add to playlist">
     <div id="pkTitle" class="pk-title muted"></div>
+    <p id="pkNote" class="pk-note muted" hidden></p>
     <input id="pkq" spellcheck="false" autocomplete="off" placeholder="Choose a playlist…">
     <div id="pkList"></div>
   </div>

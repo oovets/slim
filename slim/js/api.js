@@ -1,7 +1,7 @@
 // Thin Spotify Web API client, written against the February 2026 dev-mode API
 // (playlist `/items`, `/me/library`, search limit <= 10).
 
-import { getToken } from './auth.js';
+import { getToken, getFallbackToken } from './auth.js';
 
 const BASE = 'https://api.spotify.com/v1';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -14,8 +14,9 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { method = 'GET', query, body } = {}, canRetry = true) {
-  const token = await getToken();
+/** `fallback: true` sends the request under the optional fallback sign-in instead of the main one. */
+export async function api(path, { method = 'GET', query, body, fallback = false } = {}, canRetry = true) {
+  const token = await (fallback ? getFallbackToken() : getToken());
   if (!token) throw new ApiError(401, 'not logged in');
 
   const url = new URL(BASE + path);
@@ -29,7 +30,7 @@ export async function api(path, { method = 'GET', query, body } = {}, canRetry =
 
   if (r.status === 429 && canRetry) {
     await sleep((Number(r.headers.get('Retry-After')) || 1) * 1000);
-    return api(path, { method, query, body }, false);
+    return api(path, { method, query, body, fallback }, false);
   }
   if (!r.ok) throw new ApiError(r.status, await r.text());
   const text = await r.text();
@@ -117,8 +118,8 @@ export async function getLiked(offset = 0) {
   return page(r.items.map((i) => i.track), r, offset);
 }
 
-export async function getPlaylistTracks(id, offset = 0) {
-  const r = await api(`/playlists/${id}/items`, { query: { limit: 100, offset, additional_types: 'track,episode' } });
+export async function getPlaylistTracks(id, offset = 0, fallback = false) {
+  const r = await api(`/playlists/${id}/items`, { fallback, query: { limit: 100, offset, additional_types: 'track,episode' } });
   // Response field was renamed track -> item; accept both.
   return page(r.items.map((i) => i.item ?? i.track), r, offset);
 }

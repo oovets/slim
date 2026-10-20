@@ -50,7 +50,19 @@ Press `?` in the app for the list.
 
 ## What it can and cannot do
 
-Spotify's API only lets apps read the tracks of playlists you own or collaborate on. Other playlists can still be played, but their track list can't be shown. Recommendations, audio analysis, lyrics and offline downloads are not available to third-party apps.
+Spotify's API only lets apps created recently read the tracks of playlists you own or collaborate on. Other playlists can still be played, but by default their track list can't be shown (see the optional fallback below). Recommendations, audio analysis, lyrics and offline downloads are not available to third-party apps.
+
+## Fallback sign-in (optional, desktop app)
+
+Spotify's limit applies per *app registration* (Client ID), not per account. Some older registrations, such as the one used by the open-source [ncspot](https://github.com/hrkfdn/ncspot) client, predate the restriction and can still read other people's playlists. [spotify-player](https://github.com/aome510/spotify-player) uses it by default.
+
+slim can do the same, but only if you say yes. Open a playlist you don't own, click **Show tracks…** and confirm (or use `fallback` in the sidebar). slim then asks you to sign in a second time, read-only, under that registration, and uses it for other people's playlists only. Everything else keeps using your own Client ID. Click `fallback: on` again to turn it off.
+
+What you should know before enabling it:
+
+- It uses another project's shared API quota. If that quota runs out you will see `429` errors, and heavy use by many people could get the registration restricted, which would also hurt ncspot and spotify-player users.
+- Spotify's developer terms expect every app to use its own credentials (section VI.1), so this goes beyond them. It's your call; slim never does it without your confirmation.
+- It needs the desktop app: the sign-in callback comes back on `http://127.0.0.1:8989/login`, which the app listens on and forwards. If another program already uses port 8989 the option won't work.
 
 ## Develop
 

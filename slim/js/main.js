@@ -18,6 +18,22 @@ const fmt = (ms) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
+/**
+ * Optional "fallback" sign-in: a second Spotify app registration that Spotify still lets read
+ * other people's playlists. Opt-in, desktop app only; the demo fakes it.
+ */
+const fb = {
+  supported: () => DEMO || auth.fallbackSupported(),
+  enabled: () => (DEMO ? store.get('demoFb', '') === '1' : auth.hasFallback()),
+  /** Signs in. In the real app this navigates away and resumes `resumeId` afterwards. */
+  async enable(resumeId) {
+    if (resumeId) sessionStorage.setItem('sl.resume', resumeId);
+    if (DEMO) return store.set('demoFb', '1');
+    await auth.loginFallback();
+  },
+  disable: () => (DEMO ? store.set('demoFb', '') : auth.clearFallback()),
+};
+
 const VIEW_TITLES = { liked: 'Liked songs', search: 'Search', queue: 'Queue', recent: 'Recently played', top: 'Most played' };
 const EMPTY_TEXT = { search: 'No results.', queue: 'The queue is empty.', recent: 'Nothing played yet.' };
 const RANGES = ['short_term', 'medium_term', 'long_term'];
@@ -163,7 +179,7 @@ function fetchPage() {
   const v = S.view;
   switch (v.type) {
     case 'liked': return data.getLiked(S.next);
-    case 'playlist': return data.getPlaylistTracks(v.id, S.next);
+    case 'playlist': return data.getPlaylistTracks(v.id, S.next, useFallback(curPlaylist()));
     case 'queue': return data.getQueue();
     case 'recent': return data.getRecent();
     case 'top': return data.getTop(v.range, S.next);
@@ -187,14 +203,22 @@ async function loadMore() {
   } catch (e) {
     if (gen !== S.gen) return;
     S.hasMore = false;
-    if (S.view.type === 'playlist' && (e.status === 403 || e.status === 404)) {
-      el.list.insertAdjacentHTML('beforeend',
-        '<div class="empty">Spotify only lets apps read the tracks of your own playlists, so this list cannot be shown.' +
-        '<br><button id="playCtx" class="primary">Play playlist</button></div>');
-    } else fail(e);
+    if (S.view.type === 'playlist' && (e.status === 403 || e.status === 404)) showBlockedPlaylist();
+    else fail(e);
   } finally {
     if (gen === S.gen) { S.loading = false; maybeLoadMore(); }
   }
+}
+
+/** Other people's playlists are read through the fallback sign-in when it is on. */
+const useFallback = (p) => !!p && !isEditable(p) && fb.enabled();
+
+function showBlockedPlaylist() {
+  const offerFallback = fb.supported() && !fb.enabled();
+  el.list.insertAdjacentHTML('beforeend',
+    '<div class="empty">Spotify only lets apps read the tracks of your own playlists, so this list cannot be shown.' +
+    '<br><button id="playCtx" class="primary">Play playlist</button>' +
+    (offerFallback ? '<button id="fbEnable" class="primary">Show tracks…</button>' : '') + '</div>');
 }
 
 function maybeLoadMore() {
@@ -367,8 +391,11 @@ async function queueSelected() {
 /* picker: one small overlay for lists (playlists, devices) and text input */
 const P = { mode: 'list', all: [], items: [], sel: 0, choose: null, submit: null };
 
-function openOverlay(title, placeholder, value = '') {
+function openOverlay(title, placeholder, value = '', { note = '', search = true } = {}) {
   $('pkTitle').textContent = title;
+  $('pkNote').textContent = note;
+  $('pkNote').hidden = !note;
+  $('picker').firstElementChild.classList.toggle('nosearch', !search); // input stays focusable for keys
   $('pkq').placeholder = placeholder;
   $('pkq').value = value;
   $('pkList').hidden = P.mode === 'prompt';
@@ -378,9 +405,9 @@ function openOverlay(title, placeholder, value = '') {
 }
 
 /** items: [{ label, hint?, active?, sticky?, value }]; sticky items survive filtering. */
-function showPicker({ title, placeholder = 'Search…', items, selected = 0, choose }) {
+function showPicker({ title, placeholder = 'Search…', items, selected = 0, choose, note, search }) {
   Object.assign(P, { mode: 'list', all: items, sel: selected, choose, submit: null });
-  openOverlay(title, placeholder);
+  openOverlay(title, placeholder, '', { note, search });
   renderPicker();
 }
 
@@ -558,6 +585,42 @@ function moveSelected(dir) {
     .catch((e) => { fail(e); openView(S.view); }); // resync with what Spotify actually has
 }
 
+/* fallback sign-in ------------------------------------------------- */
+function renderFb() {
+  $('fb').hidden = !fb.supported();
+  $('fb').textContent = `fallback: ${fb.enabled() ? 'on' : 'off'}`;
+}
+
+function askFallback() {
+  const p = curPlaylist();
+  showPicker({
+    title: 'Show tracks of other people’s playlists?',
+    note: 'This signs in through ncspot’s Spotify app registration, which Spotify still lets read other ' +
+      'people’s playlists (read-only, playlists only). It uses that open-source project’s shared API quota ' +
+      'and goes beyond Spotify’s developer terms, so it is opt-in. Turn it off any time with “fallback” in the sidebar.',
+    search: false,
+    items: [
+      { label: 'Sign in with the fallback app', hint: 'opens Spotify login', value: true },
+      { label: 'Cancel', value: false },
+    ],
+    choose: async ({ value }) => {
+      if (!value) return;
+      try {
+        await fb.enable(p?.id);
+        if (DEMO) { renderFb(); toast('Fallback sign-in on', 1800); if (S.view.type === 'playlist') openView(S.view); }
+      } catch (e) { fail(e); }
+    },
+  });
+}
+
+function toggleFallback() {
+  if (!fb.enabled()) return askFallback();
+  fb.disable();
+  renderFb();
+  toast('Fallback sign-in off', 1800);
+  if (S.view.type === 'playlist') openView(S.view);
+}
+
 /* devices ---------------------------------------------------------- */
 const DEVICE_KIND = {
   computer: 'computer', smartphone: 'phone', speaker: 'speaker', tv: 'tv', castvideo: 'cast', castaudio: 'cast',
@@ -644,6 +707,7 @@ function bind() {
       S.player?.play({ context_uri: S.view.uri }).catch(fail);
       return;
     }
+    if (e.target.closest('#fbEnable')) return askFallback();
     const r = e.target.closest('.row');
     if (r) setSel(+r.dataset.i, false);
   });
@@ -714,6 +778,7 @@ function bind() {
     if (it) pickItem(+it.dataset.i);
   });
 
+  $('fb').onclick = toggleFallback;
   $('newPl').onclick = () => newPlaylist();
   $('plRename').onclick = renamePlaylist;
   $('plDelete').onclick = deletePlaylist;
@@ -760,12 +825,17 @@ function bind() {
 }
 
 /* boot ------------------------------------------------------------- */
-async function start() {
+async function start(cb) {
   el.setup.hidden = true;
   el.app.hidden = false;
   try { S.me = await data.getMe(); } catch (e) { console.warn('getMe failed', e); }
   try { S.playlists = await data.getPlaylists(); } catch (e) { fail(e); }
-  openView({ type: 'liked' });
+  renderFb();
+  // After the fallback sign-in redirect, go back to the playlist that asked for it.
+  const resume = S.playlists.find((p) => p.id === sessionStorage.getItem('sl.resume'));
+  sessionStorage.removeItem('sl.resume');
+  openView(resume ? { type: 'playlist', id: resume.id, uri: resume.uri, name: resume.name } : { type: 'liked' });
+  if (cb?.fallback) toast(cb.error ? `Fallback sign-in failed: ${cb.error}` : 'Fallback sign-in on', cb.error ? 5000 : 2500);
   if (!DEMO) {
     const drm = await probeDrm();
     console.info('DRM key system:', drm);
@@ -794,11 +864,12 @@ async function start() {
     location.replace(location.href.replace('//localhost', '//127.0.0.1'));
     return;
   }
-  try { await auth.handleCallback(); } catch (e) { return showSetup(e.message); }
+  let cb = null;
+  try { cb = await auth.handleCallback(); } catch (e) { return showSetup(e.message); }
   if (!auth.isLoggedIn()) return showSetup();
   if (!auth.hasCurrentScopes()) {
     auth.logout();
     return showSetup('New features require logging in again – click Connect.');
   }
-  start();
+  start(cb);
 })();
