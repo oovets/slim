@@ -101,7 +101,7 @@ html.tauri header { padding-top: 12px; }
 .nav.new { margin-bottom: 4px; }
 .np .dev { color: var(--accent); font-size: 12px; flex-shrink: 0; }
 .sep { height: 1px; background: var(--line); margin: 8px 10px; }
-.side-foot { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12px; }
+.side-foot { display: flex; align-items: center; gap: 2px; padding: 6px 10px; border-top: 1px solid var(--line); }
 .side-foot #logout { margin-left: auto; }
 
 /* header ----------------------------------------------------------- */
