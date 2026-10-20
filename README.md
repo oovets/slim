@@ -68,6 +68,21 @@ Press `?` in the app for the list.
 
 Spotify's API only lets apps created recently read the tracks of playlists you own or collaborate on. Other playlists can still be played, but by default their track list can't be shown (see the optional fallback below). Recommendations, audio analysis, lyrics and offline downloads are not available to third-party apps.
 
+## Resource use
+
+How slim compares with the official Spotify desktop app, measured on macOS 26 on an Apple M4 Max on AC power, with the window visible. CPU is a percentage of one core. Memory is the physical footprint (what Activity Monitor shows as "Memory") summed over all of the app's processes: slim is the app plus three WebKit helper processes, Spotify is eight processes.
+
+| | Processes | CPU median | CPU mean | CPU p95 | Memory mean | Memory max |
+|---|---:|---:|---:|---:|---:|---:|
+| **slim**, idle | 4 | 3.6% | 3.5% | 4.3% | **333 MB** | 340 MB |
+| **Spotify**, idle | 8 | 1.0% | 2.4% | 11.4% | **845 MB** | 865 MB |
+| **slim**, playing | 4 | 5.9% | 5.9% | 6.5% | **351 MB** | 353 MB |
+| **Spotify**, playing | 8 | 5.6% | 6.8% | 14.4% | **1,091 MB** | 1,260 MB |
+
+slim uses roughly a third of the memory. CPU is about the same while playing, but slim idles higher (3.6% against 1.0%).
+
+Treat these as indicative, not a rigorous benchmark. Idle is two 60-second runs per app and playing is one 90-second run per app, sampled every 3 seconds, on a machine that was also doing other work. The slim numbers are from v0.1.0 and the Spotify app was 1.3.5.3058. It was not verified that the same track played in both. Reproduce them with `scripts/footprint.py`, for example `python3 scripts/footprint.py slim --duration 60`.
+
 ## Fallback sign-in (optional, desktop app)
 
 Spotify's limit applies per *app registration* (Client ID), not per account. Some older registrations, such as the one used by the open-source [ncspot](https://github.com/hrkfdn/ncspot) client, predate the restriction and can still read other people's playlists. [spotify-player](https://github.com/aome510/spotify-player) uses it by default.
