@@ -2,6 +2,13 @@
 
 A minimal, text-only Spotify player for macOS. No album art, no feeds, no clutter: your playlists, your liked songs, a queue, and keyboard shortcuts.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+    <img alt="slim showing a playlist, with a track playing" src="docs/screenshot-light.png" width="860">
+  </picture>
+</p>
+
 Plain HTML/CSS/JS frontend in `slim/`, wrapped as a macOS app with Tauri 2 in `src-tauri/`. Playback uses the Spotify Web Playback SDK.
 
 ## Install
@@ -72,6 +79,8 @@ pnpm tauri dev      # serves slim/ with python on :5173 and opens the app window
 ```
 
 Web only (no app): `python3 -m http.server 5173 --bind 127.0.0.1 --directory slim`, then open http://127.0.0.1:5173/ (`?demo` = fake data, no login).
+
+The screenshots above are rendered from the demo data (no login, nothing from a real account). Regenerate them after UI changes with `./scripts/screenshots/make.sh` (needs Google Chrome).
 
 ## Build
 
