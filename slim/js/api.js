@@ -34,7 +34,10 @@ export async function api(path, { method = 'GET', query, body, fallback = false 
   }
   if (!r.ok) throw new ApiError(r.status, await r.text());
   const text = await r.text();
-  return text ? JSON.parse(text) : null;
+  if (!text) return null;
+  // Most answers are JSON, but some player commands (shuffle, repeat) reply 2xx with a bare
+  // plain-text id. That is still a success, so hand it back as text instead of throwing.
+  try { return JSON.parse(text); } catch { return text; }
 }
 
 /** Normalise track/episode objects into the flat shape the UI uses. */
