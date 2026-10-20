@@ -107,11 +107,19 @@ const cycleTheme = () => applyTheme(THEMES[(THEMES.indexOf(store.get('theme', ''
 const TAURI = window.__TAURI_INTERNALS__;
 let zoom = Number(store.get('zoom', 1)) || 1;
 
+async function applyZoom(z) {
+  if (TAURI) {
+    await TAURI.invoke('plugin:webview|set_webview_zoom', { label: TAURI.metadata.currentWebview.label, value: z });
+  } else if (window.slimDesktop) {
+    await window.slimDesktop.setZoom(z);
+  }
+}
+
 async function setZoom(z) {
   zoom = Math.round(Math.min(2, Math.max(0.7, z)) * 10) / 10;
   store.set('zoom', zoom);
   try {
-    await TAURI.invoke('plugin:webview|set_webview_zoom', { label: TAURI.metadata.currentWebview.label, value: zoom });
+    await applyZoom(zoom);
     document.documentElement.style.setProperty('--zoom', String(zoom));
     toast(`Zoom ${Math.round(zoom * 100)}%`, 900);
   } catch (e) { fail(e); }
@@ -825,6 +833,11 @@ function bind() {
       if (step) { e.preventDefault(); setZoom(zoom + step); }
       else if (e.key === '0') { e.preventDefault(); setZoom(1); }
     }
+    if (window.slimDesktop && e.ctrlKey && !e.metaKey && !e.altKey) {
+      const step = { '=': 0.1, '+': 0.1, '-': -0.1, _: -0.1 }[e.key];
+      if (step) { e.preventDefault(); setZoom(zoom + step); }
+      else if (e.key === '0') { e.preventDefault(); setZoom(1); }
+    }
     // The picker closes itself on Enter/Escape; those keys must not also reach the list below.
     if (!$('picker').hidden || e.target.id === 'pkq') return;
     if (e.target === el.q || e.target.id === 'clientId') return;
@@ -873,7 +886,16 @@ async function start(cb) {
   if (!DEMO) {
     const drm = await probeDrm();
     console.info('DRM key system:', drm);
-    if (!drm) toast('This webview lacks DRM support (EME) – Spotify playback probably will not work here.', 12000);
+    if (!drm && window.slimDesktop) {
+      toast('This window has no DRM support. Opening Chrome or Chromium for playback.', 4000);
+      setTimeout(() => {
+        window.slimDesktop.openChromiumFallback().then((res) => {
+          if (res && !res.ok) toast(res.error, 12000);
+        }).catch((e) => fail(e));
+      }, 700);
+    } else if (!drm) {
+      toast('This webview lacks DRM support (EME) – Spotify playback probably will not work here.', 12000);
+    }
   }
   try {
     S.player = await createPlayer({ onState: onPlayerState, onError: toast, volume: +store.get('vol', 50) / 100 });
@@ -886,7 +908,12 @@ async function start(cb) {
   if (TAURI) {
     document.documentElement.classList.add('tauri');
     document.documentElement.style.setProperty('--zoom', String(zoom));
-    if (zoom !== 1) TAURI.invoke('plugin:webview|set_webview_zoom', { label: TAURI.metadata.currentWebview.label, value: zoom }).catch(() => {});
+    if (zoom !== 1) applyZoom(zoom).catch(() => {});
+  } else if (window.slimDesktop) {
+    const zk = $('zoomKeys');
+    if (zk) zk.textContent = 'ctrl +  ctrl −  ctrl 0';
+    document.documentElement.style.setProperty('--zoom', String(zoom));
+    if (zoom !== 1) applyZoom(zoom).catch(() => {});
   }
   applyTheme(store.get('theme', '') || 'auto');
   bind();

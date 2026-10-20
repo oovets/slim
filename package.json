@@ -2,12 +2,47 @@
   "name": "slim",
   "private": true,
   "version": "0.2.2",
+  "description": "Minimal Spotify player",
+  "author": "Stefan Larsson",
+  "desktopName": "slim.desktop",
+  "main": "src-electron/main.js",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "postinstall": "node node_modules/electron/install.js",
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder --linux AppImage"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.3"
+    "@tauri-apps/cli": "^2.12.3",
+    "electron": "github:castlabs/electron-releases#v44.5.1+wvcus",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "se.aspace.slim",
+    "productName": "slim",
+    "electronVersion": "44.5.1+wvcus",
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    },
+    "files": [
+      "src-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "slim",
+        "to": "slim"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "category": "AudioVideo",
+      "syncDesktopName": true,
+      "icon": "src-tauri/icons/icon.png",
+      "synopsis": "Minimal Spotify player",
+      "description": "A minimal, text-only Spotify player. Requires Spotify Premium and your own Spotify developer Client ID."
+    }
   }
 }

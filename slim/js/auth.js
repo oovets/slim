@@ -157,8 +157,8 @@ async function tokenFor(profile) {
 export const getToken = () => tokenFor(MAIN);
 
 /* fallback sign-in ------------------------------------------------- */
-/** The :8989 callback listener only exists in the desktop app. */
-export const fallbackSupported = () => !!window.__TAURI_INTERNALS__;
+/** The :8989 callback listener only exists in the desktop app (Tauri or Electron). */
+export const fallbackSupported = () => !!window.__TAURI_INTERNALS__ || !!window.slimDesktop;
 export const hasFallback = () => !!load(FB)?.refresh;
 export const loginFallback = () => startLogin(FB);
 export const clearFallback = () => clear(FB);

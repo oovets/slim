@@ -1,6 +1,6 @@
 # slim
 
-A minimal, text-only Spotify player for macOS. No album art, no feeds, no clutter: your playlists, your liked songs, a queue, and keyboard shortcuts.
+A minimal, text-only Spotify player for macOS and Linux. No album art, no feeds, no clutter: your playlists, your liked songs, a queue, and keyboard shortcuts.
 
 <p align="center">
   <picture>
@@ -9,9 +9,11 @@ A minimal, text-only Spotify player for macOS. No album art, no feeds, no clutte
   </picture>
 </p>
 
-Plain HTML/CSS/JS frontend in `slim/`, wrapped as a macOS app with Tauri 2 in `src-tauri/`. Playback uses the Spotify Web Playback SDK.
+Plain HTML/CSS/JS frontend in `slim/`. macOS is a Tauri 2 app (`src-tauri/`). Linux is an Electron app (`src-electron/`) with Widevine; if that window cannot play Spotify it opens system Chrome or Chromium instead. Playback uses the Spotify Web Playback SDK.
 
 ## Install
+
+### macOS
 
 Download the latest `.dmg` from [Releases](https://github.com/oovets/slim/releases), open it and drag **slim** to Applications. Apple Silicon (M1 or newer), macOS 11+.
 
@@ -20,6 +22,12 @@ The app is not signed with an Apple Developer ID, so macOS blocks it the first t
 ```bash
 xattr -dr com.apple.quarantine /Applications/slim.app
 ```
+
+### Linux
+
+Download the latest `.AppImage` from [Releases](https://github.com/oovets/slim/releases), mark it executable, and run it. It is unsigned.
+
+Local playback needs Widevine. slim opens its own window first. If that webview has no DRM, it opens Google Chrome or Chromium in app mode on the same local page, so one of `google-chrome-stable`, `google-chrome`, `chromium`, or `chromium-browser` must be installed. Controlling another Spotify Connect device works either way.
 
 ## Set up Spotify (once)
 
@@ -54,7 +62,7 @@ Press `?` in the app for the list.
 | l | like |
 | t | theme (auto / light / dark) |
 | b | hide / show the sidebar (also the button next to the title) |
-| ⌘ + / ⌘ − / ⌘ 0 | zoom |
+| ⌘ + / ⌘ − / ⌘ 0 | zoom (ctrl on Linux) |
 
 ## What it can and cannot do
 
@@ -76,7 +84,8 @@ What you should know before enabling it:
 
 ```bash
 pnpm install
-pnpm tauri dev      # serves slim/ with python on :5173 and opens the app window
+pnpm tauri dev      # macOS: serves slim/ with python on :5173 and opens the app window
+pnpm electron:dev   # Linux: Castlabs Electron, same ports
 ```
 
 Web only (no app): `python3 -m http.server 5173 --bind 127.0.0.1 --directory slim`, then open http://127.0.0.1:5173/ (`?demo` = fake data, no login).
@@ -85,11 +94,27 @@ The screenshots above are rendered from the demo data (no login, nothing from a 
 
 ## Build
 
+Quit any other slim before building or running one. Dev and release share ports 5173 and 8989, and release builds serve the embedded frontend on `127.0.0.1:5173` (see `src-tauri/src/main.rs` and `src-electron/main.js`) so the login redirect works.
+
+### macOS
+
 ```bash
+pnpm install
 pnpm tauri build    # -> src-tauri/target/release/bundle/{macos/slim.app,dmg/*.dmg}
 ```
 
-Release builds serve the embedded frontend on `127.0.0.1:5173` (see `src-tauri/src/main.rs`) so the login redirect works. Quit `pnpm tauri dev` before running the built app, since both use port 5173.
+### Linux
+
+Build on Linux, with Node 22 or newer and pnpm. `pnpm install` downloads Castlabs Electron, which includes Widevine.
+
+```bash
+pnpm install
+pnpm electron:build                 # -> dist/slim-<version>.AppImage
+chmod +x dist/slim-*.AppImage
+./dist/slim-*.AppImage
+```
+
+The first launch downloads the Widevine CDM. If that window still cannot play Spotify, slim opens system Chrome or Chromium in app mode (see [Install](#linux)). A dev window, without packaging an AppImage, is `pnpm electron:dev`.
 
 ## License
 
