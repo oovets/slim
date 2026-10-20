@@ -7,8 +7,11 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5' fill='%231db954'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 <script>
-  // Apply saved theme before first paint to avoid a flash.
-  try { const t = localStorage.getItem('sl.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  // Apply the saved theme and sidebar state before first paint to avoid a flash.
+  try {
+    const t = localStorage.getItem('sl.theme'); if (t) document.documentElement.dataset.theme = t;
+    if (localStorage.getItem('sl.sidebar') === 'hidden') document.documentElement.classList.add('side-hidden');
+  } catch {}
 </script>
 </head>
 <body>
@@ -52,8 +55,8 @@
 
   <main>
     <header data-tauri-drag-region>
-      <button id="menu" class="icon only-narrow" aria-label="Menu">
-        <svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <button id="menu" class="icon" aria-label="Toggle sidebar" title="Hide sidebar (b)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
       </button>
       <h2 id="title" data-tauri-drag-region></h2>
       <span id="count" class="muted" data-tauri-drag-region></span>
@@ -111,6 +114,7 @@
     <dt>/</dt><dd>filter / search</dd>
     <dt>l</dt><dd>like</dd>
     <dt>t</dt><dd>theme</dd>
+    <dt>b</dt><dd>hide / show sidebar</dd>
     <dt>⌘ +  ⌘ −  ⌘ 0</dt><dd>zoom (app)</dd>
   </dl>
 </div>

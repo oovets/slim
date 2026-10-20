@@ -116,6 +116,27 @@ async function setZoom(z) {
   } catch (e) { fail(e); }
 }
 
+/* sidebar ---------------------------------------------------------- */
+// Wide windows hide the sidebar for good (remembered); narrow ones slide it over the list.
+const isNarrow = () => matchMedia('(max-width: 600px)').matches;
+const sideHidden = () => document.documentElement.classList.contains('side-hidden');
+
+function updateSidebarButton() {
+  const open = isNarrow() ? el.app.classList.contains('menu-open') : !sideHidden();
+  $('menu').title = `${open ? 'Hide' : 'Show'} sidebar (b)`;
+  $('menu').setAttribute('aria-expanded', String(open));
+}
+
+function toggleSidebar() {
+  if (isNarrow()) {
+    el.app.classList.toggle('menu-open');
+  } else {
+    document.documentElement.classList.toggle('side-hidden');
+    store.set('sidebar', sideHidden() ? 'hidden' : '');
+  }
+  updateSidebarButton();
+}
+
 /* setup / auth ----------------------------------------------------- */
 function showSetup(err) {
   el.app.hidden = true;
@@ -165,6 +186,7 @@ async function openView(view) {
   $('range').hidden = view.type !== 'top';
   document.querySelectorAll('#range button').forEach((b) => b.classList.toggle('active', b.dataset.r === view.range));
   el.app.classList.remove('menu-open');
+  updateSidebarButton();
   el.list.scrollTop = 0;
   renderNav();
   updatePlaylistActions();
@@ -689,7 +711,9 @@ function updateMediaSession(prevUri) {
 function bind() {
   $('theme').onclick = cycleTheme;
   $('help').onclick = () => ($('helpbox').hidden = !$('helpbox').hidden);
-  $('menu').onclick = () => el.app.classList.toggle('menu-open');
+  $('menu').onclick = toggleSidebar;
+  matchMedia('(max-width: 600px)').addEventListener('change', updateSidebarButton);
+  updateSidebarButton();
 
   $('nav').onclick = (e) => {
     const b = e.target.closest('button.nav');
@@ -822,7 +846,7 @@ function bind() {
       Backspace: removeSelected, Delete: removeSelected,
       '+': () => setVol(Math.min(100, +vol.value + 5)), '=': () => setVol(Math.min(100, +vol.value + 5)),
       '-': () => setVol(Math.max(0, +vol.value - 5)),
-      l: toggleLike, t: cycleTheme,
+      l: toggleLike, t: cycleTheme, b: toggleSidebar,
       '?': () => ($('helpbox').hidden = !$('helpbox').hidden),
       '/': () => el.q.focus(),
       Escape: () => { $('helpbox').hidden = true; },

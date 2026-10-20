@@ -53,6 +53,7 @@ Press `?` in the app for the list.
 | / | filter (search view: search) |
 | l | like |
 | t | theme (auto / light / dark) |
+| b | hide / show the sidebar (also the button next to the title) |
 | ⌘ + / ⌘ − / ⌘ 0 | zoom |
 
 ## What it can and cannot do
