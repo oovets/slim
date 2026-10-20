@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,16 +16,16 @@
 <section id="setup" hidden>
   <div class="card">
     <h1>slim</h1>
-    <p class="muted">Minimal Spotify-spelare. Kräver Premium.</p>
+    <p class="muted">Minimal Spotify player. Requires Premium.</p>
     <label>Client ID
-      <input id="clientId" spellcheck="false" autocomplete="off" placeholder="från developer.spotify.com">
+      <input id="clientId" spellcheck="false" autocomplete="off" placeholder="from developer.spotify.com">
     </label>
-    <label>Redirect URI <span class="muted">(lägg till i din app)</span>
+    <label>Redirect URI <span class="muted">(add it to your app)</span>
       <input id="redirect" readonly>
     </label>
     <p id="setupErr" class="err" hidden></p>
-    <button id="connect" class="primary">Anslut</button>
-    <p class="muted small"><a href="?demo">Prova demo utan inloggning</a></p>
+    <button id="connect" class="primary">Connect</button>
+    <p class="muted small"><a href="?demo">Try the demo without logging in</a></p>
   </div>
 </section>
 
@@ -33,75 +33,83 @@
   <aside id="side">
     <div class="drag" data-tauri-drag-region></div>
     <nav id="nav">
-      <button class="nav" data-view="search">Sök</button>
-      <button class="nav" data-view="liked">Gillade låtar</button>
-      <button class="nav" data-view="queue">Kö</button>
-      <button class="nav" data-view="recent">Senast spelat</button>
-      <button class="nav" data-view="top">Mest spelat</button>
+      <button class="nav" data-view="search">Search</button>
+      <button class="nav" data-view="liked">Liked songs</button>
+      <button class="nav" data-view="queue">Queue</button>
+      <button class="nav" data-view="recent">Recently played</button>
+      <button class="nav" data-view="top">Most played</button>
       <div class="sep"></div>
+      <button class="nav new" id="newPl">+ New playlist</button>
       <div id="playlists"></div>
     </nav>
     <div class="side-foot">
-      <button id="theme" class="link" title="Byt tema (t)">tema: auto</button>
-      <button id="help" class="link" title="Kortkommandon (?)">?</button>
-      <button id="logout" class="link">logga ut</button>
+      <button id="theme" class="link" title="Switch theme (t)">theme: auto</button>
+      <button id="help" class="link" title="Keyboard shortcuts (?)">?</button>
+      <button id="logout" class="link">log out</button>
     </div>
   </aside>
 
   <main>
     <header data-tauri-drag-region>
-      <button id="menu" class="icon only-narrow" aria-label="Meny">
+      <button id="menu" class="icon only-narrow" aria-label="Menu">
         <svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round"/></svg>
       </button>
       <h2 id="title" data-tauri-drag-region></h2>
       <span id="count" class="muted" data-tauri-drag-region></span>
       <span id="range" class="seg" hidden>
-        <button data-r="short_term">4 veckor</button><button data-r="medium_term">6 månader</button><button data-r="long_term">alltid</button>
+        <button data-r="short_term">4 weeks</button><button data-r="medium_term">6 months</button><button data-r="long_term">all time</button>
       </span>
-      <input id="q" type="search" spellcheck="false" autocomplete="off" placeholder="Filtrera  /">
+      <span id="plActions" class="seg" hidden>
+        <button id="plRename">rename</button><button id="plDelete">delete</button>
+      </span>
+      <input id="q" type="search" spellcheck="false" autocomplete="off" placeholder="Filter  /">
     </header>
     <div id="list" tabindex="-1"></div>
   </main>
 
   <footer id="bar">
-    <div id="prog" title="Spola"><div id="fill"></div></div>
+    <div id="prog" title="Seek"><div id="fill"></div></div>
     <div class="ctl">
-      <button id="shuffle" class="icon" aria-label="Blanda (s)" title="Blanda (s)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h2c3 0 4 8 7 8h3M2 12h2c1 0 1.8-1.2 2.6-2.6M9.4 6.6C10.200 5.200 10.600 4 11.500 4H14M12 2l2 2-2 2M12 10l2 2-2 2"/></svg></button>
-      <button id="prev" class="icon" aria-label="Föregående"><svg viewBox="0 0 16 16"><path d="M4 3v10M13 3.5v9L6.5 8z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
-      <button id="pp" class="icon big" aria-label="Spela/Pausa"></button>
-      <button id="next" class="icon" aria-label="Nästa"><svg viewBox="0 0 16 16"><path d="M12 3v10M3 3.5v9L9.5 8z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
-      <button id="repeat" class="icon" aria-label="Upprepa (r)" title="Upprepa (r)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V6a2 2 0 0 1 2-2h8M11 2l2 2-2 2M13 9v1a2 2 0 0 1-2 2H3M5 14l-2-2 2-2"/></svg></button>
+      <button id="shuffle" class="icon" aria-label="Shuffle (s)" title="Shuffle (s)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h2c3 0 4 8 7 8h3M2 12h2c1 0 1.8-1.2 2.6-2.6M9.4 6.6C10.200 5.200 10.600 4 11.500 4H14M12 2l2 2-2 2M12 10l2 2-2 2"/></svg></button>
+      <button id="prev" class="icon" aria-label="Previous"><svg viewBox="0 0 16 16"><path d="M4 3v10M13 3.5v9L6.5 8z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+      <button id="pp" class="icon big" aria-label="Play/Pause"></button>
+      <button id="next" class="icon" aria-label="Next"><svg viewBox="0 0 16 16"><path d="M12 3v10M3 3.5v9L9.5 8z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+      <button id="repeat" class="icon" aria-label="Repeat (r)" title="Repeat (r)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V6a2 2 0 0 1 2-2h8M11 2l2 2-2 2M13 9v1a2 2 0 0 1-2 2H3M5 14l-2-2 2-2"/></svg></button>
     </div>
-    <div class="np"><span id="npTitle">Ingenting spelas</span><span id="npArtist" class="muted"></span></div>
+    <div class="np"><span id="npTitle">Nothing playing</span><span id="npArtist" class="muted"></span><span id="npDev" class="dev"></span></div>
     <div class="time muted"><span id="tcur">0:00</span> / <span id="tdur">0:00</span></div>
-    <button id="like" class="icon" aria-label="Gilla (l)"><svg viewBox="0 0 16 16"><path d="M8 13.5S2.5 10 2.5 6A2.9 2.9 0 0 1 8 4.8 2.9 2.9 0 0 1 13.5 6C13.5 10 8 13.5 8 13.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
-    <input id="vol" type="range" min="0" max="100" aria-label="Volym">
+    <button id="like" class="icon" aria-label="Like (l)"><svg viewBox="0 0 16 16"><path d="M8 13.5S2.5 10 2.5 6A2.9 2.9 0 0 1 8 4.8 2.9 2.9 0 0 1 13.5 6C13.5 10 8 13.5 8 13.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
+    <button id="devices" class="icon" aria-label="Devices (d)" title="Play on another device (d)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="8" rx="1.2"/><path d="M6 14h4M8 11v3"/></svg></button>
+    <input id="vol" type="range" min="0" max="100" aria-label="Volume">
   </footer>
 </div>
 
 <div id="picker" hidden>
-  <div class="pk" role="dialog" aria-label="Lägg till i spellista">
+  <div class="pk" role="dialog" aria-label="Add to playlist">
     <div id="pkTitle" class="pk-title muted"></div>
-    <input id="pkq" spellcheck="false" autocomplete="off" placeholder="Välj spellista…">
+    <input id="pkq" spellcheck="false" autocomplete="off" placeholder="Choose a playlist…">
     <div id="pkList"></div>
   </div>
 </div>
 
 <div id="helpbox" hidden>
   <dl>
-    <dt>mellanslag</dt><dd>spela / pausa</dd>
-    <dt>↑ ↓ &nbsp;j k</dt><dd>välj låt</dd>
-    <dt>enter</dt><dd>spela vald</dd>
-    <dt>← →</dt><dd>spola 10 s</dd>
-    <dt>n &nbsp;p</dt><dd>nästa / föregående</dd>
-    <dt>s &nbsp;r</dt><dd>blanda / upprepa</dd>
-    <dt>q</dt><dd>lägg i kö</dd>
-    <dt>a</dt><dd>lägg i spellista</dd>
-    <dt>+ −</dt><dd>volym</dd>
-    <dt>/</dt><dd>filtrera / sök</dd>
-    <dt>l</dt><dd>gilla</dd>
-    <dt>t</dt><dd>tema</dd>
-    <dt>⌘ +  ⌘ −  ⌘ 0</dt><dd>zooma (appen)</dd>
+    <dt>space</dt><dd>play / pause</dd>
+    <dt>↑ ↓ &nbsp;j k</dt><dd>select track</dd>
+    <dt>enter</dt><dd>play selected</dd>
+    <dt>← →</dt><dd>seek 10 s</dd>
+    <dt>n &nbsp;p</dt><dd>next / previous</dd>
+    <dt>s &nbsp;r</dt><dd>shuffle / repeat</dd>
+    <dt>q</dt><dd>add to queue</dd>
+    <dt>a</dt><dd>add to playlist</dd>
+    <dt>d</dt><dd>play on another device</dd>
+    <dt>⌫ ⌫</dt><dd>remove from playlist</dd>
+    <dt>⌥ ↑ ⌥ ↓</dt><dd>move track in playlist</dd>
+    <dt>+ −</dt><dd>volume</dd>
+    <dt>/</dt><dd>filter / search</dd>
+    <dt>l</dt><dd>like</dd>
+    <dt>t</dt><dd>theme</dd>
+    <dt>⌘ +  ⌘ −  ⌘ 0</dt><dd>zoom (app)</dd>
   </dl>
 </div>
 <div id="toast" role="status" hidden></div>

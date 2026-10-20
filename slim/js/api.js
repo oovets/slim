@@ -62,17 +62,32 @@ export async function getMe() {
   return { id: r.id, name: r.display_name };
 }
 
+const playlistInfo = (p) => ({
+  id: p.id, uri: p.uri, name: p.name,
+  owner: p.owner?.display_name ?? '', ownerId: p.owner?.id, collaborative: !!p.collaborative,
+});
+
 export async function getPlaylists() {
   const out = [];
   for (let offset = 0; ; offset += 50) {
     const r = await api('/me/playlists', { query: { limit: 50, offset } });
-    out.push(...r.items.filter(Boolean).map((p) => ({
-      id: p.id, uri: p.uri, name: p.name,
-      owner: p.owner?.display_name ?? '', ownerId: p.owner?.id, collaborative: !!p.collaborative,
-    })));
+    out.push(...r.items.filter(Boolean).map(playlistInfo));
     if (!r.next) return out;
   }
 }
+
+export async function createPlaylist(name) {
+  return playlistInfo(await api('/me/playlists', { method: 'POST', body: { name, public: false } }));
+}
+export const renamePlaylist = (id, name) => api(`/playlists/${id}`, { method: 'PUT', body: { name } });
+/** "Deleting" a playlist is unfollowing it; Spotify keeps it recoverable for a while. */
+export const deletePlaylist = (uri) => api('/me/library', { method: 'DELETE', query: { uris: uri } });
+/** Removes every occurrence of each URI (the API addresses items by URI, not position). */
+export const removeFromPlaylist = (id, uris) =>
+  api(`/playlists/${id}/items`, { method: 'DELETE', body: { items: uris.map((uri) => ({ uri })) } });
+/** Moves the item at `from` so it ends up before the item currently at `before`. */
+export const moveInPlaylist = (id, from, before) =>
+  api(`/playlists/${id}/items`, { method: 'PUT', body: { range_start: from, insert_before: before, range_length: 1 } });
 
 const single = (tracks) => ({ tracks, total: tracks.length, hasMore: false, next: tracks.length });
 
