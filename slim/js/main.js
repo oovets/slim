@@ -18,8 +18,8 @@ const fmt = (ms) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-const VIEW_TITLES = { liked: 'Gillade låtar', search: 'Sök', queue: 'Kö', recent: 'Senast spelat', top: 'Mest spelat' };
-const EMPTY_TEXT = { search: 'Inga träffar.', queue: 'Kön är tom.', recent: 'Inget spelat än.' };
+const VIEW_TITLES = { liked: 'Liked songs', search: 'Search', queue: 'Queue', recent: 'Recently played', top: 'Most played' };
+const EMPTY_TEXT = { search: 'No results.', queue: 'The queue is empty.', recent: 'Nothing played yet.' };
 const RANGES = ['short_term', 'medium_term', 'long_term'];
 const savedRange = () => (RANGES.includes(store.get('range', '')) ? store.get('range', '') : 'medium_term');
 
@@ -66,7 +66,7 @@ async function probeDrm() {
 }
 const fail = (e) => {
   console.error(e);
-  toast(e?.status === 403 ? 'Spotify nekade åtkomst (403) – prova att logga ut och in igen' : (e?.message ?? String(e)));
+  toast(e?.status === 403 ? 'Spotify denied access (403) – try logging out and in again' : (e?.message ?? String(e)));
 };
 
 /* theme ------------------------------------------------------------ */
@@ -74,7 +74,7 @@ const THEMES = ['auto', 'light', 'dark'];
 function applyTheme(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
-  $('theme').textContent = `tema: ${t === 'auto' ? 'auto' : t === 'light' ? 'ljust' : 'mörkt'}`;
+  $('theme').textContent = `theme: ${t}`;
   store.set('theme', t === 'auto' ? '' : t);
 }
 const cycleTheme = () => applyTheme(THEMES[(THEMES.indexOf(store.get('theme', '') || 'auto') + 1) % 3]);
@@ -105,7 +105,7 @@ function showSetup(err) {
 $('connect').onclick = async () => {
   const id = $('clientId').value.trim();
   if (!/^[0-9a-f]{32}$/i.test(id)) {
-    $('setupErr').textContent = 'Client ID ska vara 32 tecken (hex).';
+    $('setupErr').textContent = 'Client ID must be 32 characters (hex).';
     $('setupErr').hidden = false;
     return;
   }
@@ -135,7 +135,7 @@ async function openView(view) {
   S.sel = -1;
   S.filter = '';
   el.q.value = '';
-  el.q.placeholder = view.type === 'search' ? 'Sök låtar, tryck enter  /' : 'Filtrera  /';
+  el.q.placeholder = view.type === 'search' ? 'Search tracks, press enter  /' : 'Filter  /';
   el.title.textContent = view.type === 'playlist' ? view.name : VIEW_TITLES[view.type];
   el.count.textContent = '';
   $('range').hidden = view.type !== 'top';
@@ -143,11 +143,12 @@ async function openView(view) {
   el.app.classList.remove('menu-open');
   el.list.scrollTop = 0;
   renderNav();
+  updatePlaylistActions();
   resetList();
 
   if (view.type === 'search') {
     S.hasMore = false;
-    el.list.insertAdjacentHTML('beforeend', '<div class="empty" id="hint">Skriv och tryck enter.</div>');
+    el.list.insertAdjacentHTML('beforeend', '<div class="empty" id="hint">Type and press enter.</div>');
     el.q.focus();
     return;
   }
@@ -155,7 +156,7 @@ async function openView(view) {
 }
 
 function resetList() {
-  el.list.innerHTML = `<div class="colhead"><span></span><span>Titel</span><span>Artist</span><span class="al">Album</span><span class="d">Tid</span></div>`;
+  el.list.innerHTML = `<div class="colhead"><span></span><span>Title</span><span>Artist</span><span class="al">Album</span><span class="d">Time</span></div>`;
 }
 
 function fetchPage() {
@@ -188,8 +189,8 @@ async function loadMore() {
     S.hasMore = false;
     if (S.view.type === 'playlist' && (e.status === 403 || e.status === 404)) {
       el.list.insertAdjacentHTML('beforeend',
-        '<div class="empty">Spotify låter bara appar läsa låtarna i dina egna spellistor, så listan kan inte visas.' +
-        '<br><button id="playCtx" class="primary">Spela spellistan</button></div>');
+        '<div class="empty">Spotify only lets apps read the tracks of your own playlists, so this list cannot be shown.' +
+        '<br><button id="playCtx" class="primary">Play playlist</button></div>');
     } else fail(e);
   } finally {
     if (gen === S.gen) { S.loading = false; maybeLoadMore(); }
@@ -205,8 +206,8 @@ el.list.addEventListener('scroll', maybeLoadMore, { passive: true });
 
 function updateCount() {
   const t = S.total;
-  const shown = S.filter ? `${S.shown.length} av ${t}` : `${t}`;
-  el.count.textContent = t ? `${shown} låtar` : '';
+  const shown = S.filter ? `${S.shown.length} of ${t}` : `${t}`;
+  el.count.textContent = t ? `${shown} tracks` : '';
 }
 
 /* rows ------------------------------------------------------------- */
@@ -218,7 +219,7 @@ function matches(t) {
 
 function appendRows(tracks) {
   if (!tracks.length && !S.shown.length && !S.hasMore) {
-    const msg = S.filter ? 'Inget matchar filtret.' : (EMPTY_TEXT[S.view.type] ?? 'Tom lista.');
+    const msg = S.filter ? 'Nothing matches the filter.' : (EMPTY_TEXT[S.view.type] ?? 'Empty list.');
     el.list.insertAdjacentHTML('beforeend', `<div class="empty">${msg}</div>`);
     return;
   }
@@ -276,9 +277,11 @@ function onPlayerState(st) {
   const prev = S.now?.track?.uri;
   S.now = st;
   $('pp').innerHTML = st && !st.paused ? PAUSE : PLAY;
-  $('npTitle').textContent = st?.track.name ?? 'Ingenting spelas';
+  $('npTitle').textContent = st?.track.name ?? 'Nothing playing';
   $('npArtist').textContent = st?.track.artists ?? '';
   $('tdur').textContent = fmt(st?.duration ?? 0);
+  $('npDev').textContent = st?.remote ? `on ${st.device.name}` : '';
+  $('devices').classList.toggle('on', !!st?.remote);
   document.title = st && !st.paused ? `${st.track.name} · ${st.track.artists}` : 'slim';
   if (st) { S.shuffle = !!st.shuffle; S.repeat = st.repeat ?? 0; setModesUi(); }
   markPlaying();
@@ -350,54 +353,240 @@ const refreshQueue = () => { if (S.view?.type === 'queue') openView({ type: 'que
 
 async function queueSelected() {
   const t = S.shown[S.sel];
-  if (!t?.playable) return toast('Välj en låt först', 1500);
+  if (!t?.playable) return toast('Select a track first', 1500);
   try {
     await data.addToQueue(t.uri, S.player?.deviceId());
-    toast(`Lade i kön: ${t.name}`, 1500);
+    toast(`Added to queue: ${t.name}`, 1500);
     if (S.view.type === 'queue') setTimeout(refreshQueue, 600);
   } catch (e) {
-    if (e.status === 404) toast('Starta en låt först, så finns det en kö att lägga i', 3000);
+    if (e.status === 404) toast('Start a track first so there is a queue to add to', 3000);
     else fail(e);
   }
 }
 
-/* add to playlist -------------------------------------------------- */
-const P = { track: null, items: [], sel: 0 };
-const editablePlaylists = () => S.playlists.filter((p) => !S.me || p.ownerId === S.me.id || p.collaborative);
+/* picker: one small overlay for lists (playlists, devices) and text input */
+const P = { mode: 'list', all: [], items: [], sel: 0, choose: null, submit: null };
 
-function openPicker() {
-  const t = S.shown[S.sel] ?? S.now?.track;
-  if (!t) return toast('Välj en låt först', 1500);
-  P.track = t;
-  P.sel = 0;
-  $('pkTitle').textContent = `Lägg till ”${t.name}” i`;
-  $('pkq').value = '';
+function openOverlay(title, placeholder, value = '') {
+  $('pkTitle').textContent = title;
+  $('pkq').placeholder = placeholder;
+  $('pkq').value = value;
+  $('pkList').hidden = P.mode === 'prompt';
   $('picker').hidden = false;
-  renderPicker();
   $('pkq').focus();
+  $('pkq').select();
 }
 
-function renderPicker() {
+/** items: [{ label, hint?, active?, sticky?, value }]; sticky items survive filtering. */
+function showPicker({ title, placeholder = 'Search…', items, selected = 0, choose }) {
+  Object.assign(P, { mode: 'list', all: items, sel: selected, choose, submit: null });
+  openOverlay(title, placeholder);
+  renderPicker();
+}
+
+function showPrompt({ title, placeholder = '', value = '', submit }) {
+  Object.assign(P, { mode: 'prompt', all: [], items: [], sel: 0, choose: null, submit });
+  openOverlay(title, placeholder, value);
+}
+
+function renderPicker(resetSel = false) {
   const q = $('pkq').value.trim().toLowerCase();
-  P.items = editablePlaylists().filter((p) => p.name.toLowerCase().includes(q));
+  P.items = P.all.filter((it) => it.sticky || it.label.toLowerCase().includes(q));
+  if (resetSel) P.sel = Math.max(0, P.items.findIndex((it) => !it.sticky));
   P.sel = Math.min(P.sel, Math.max(0, P.items.length - 1));
   $('pkList').innerHTML = P.items.length
-    ? P.items.map((p, i) => `<div class="pk-item${i === P.sel ? ' sel' : ''}" data-i="${i}">${esc(p.name)}</div>`).join('')
-    : '<div class="pk-empty">Inga spellistor.</div>';
+    ? P.items.map((it, i) =>
+      `<div class="pk-item${i === P.sel ? ' sel' : ''}" data-i="${i}"><span>${it.active ? '<b class="pk-dot">●</b> ' : ''}${esc(it.label)}</span>` +
+      `${it.hint ? `<span class="pk-hint">${esc(it.hint)}</span>` : ''}</div>`).join('')
+    : '<div class="pk-empty">Nothing to choose.</div>';
   $('pkList').querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
 }
 
 const closePicker = () => { $('picker').hidden = true; $('pkq').blur(); };
 
-async function chooseList(i) {
-  const p = P.items[i];
-  if (!p) return;
+function pickItem(i) {
+  const it = P.items[i];
+  if (!it) return;
+  const fn = P.choose;
   closePicker();
+  fn(it);
+}
+
+function submitPrompt() {
+  const v = $('pkq').value.trim();
+  if (!v) return;
+  const fn = P.submit;
+  closePicker();
+  fn(v);
+}
+
+/* playlist management ---------------------------------------------- */
+const isMine = (p) => !!S.me && p.ownerId === S.me.id;
+const isEditable = (p) => !S.me || isMine(p) || p.collaborative;
+const curPlaylist = () => (S.view?.type === 'playlist' ? S.playlists.find((p) => p.id === S.view.id) : null);
+
+async function addTo(p, track) {
   try {
-    await data.addToPlaylist(p.id, [P.track.uri]);
-    toast(`Lade till i ${p.name}`, 1800);
+    await data.addToPlaylist(p.id, [track.uri]);
+    toast(`Added to ${p.name}`, 1800);
     if (S.view.type === 'playlist' && S.view.id === p.id) openView(S.view);
   } catch (e) { fail(e); }
+}
+
+function newPlaylist(then) {
+  showPrompt({
+    title: 'New playlist',
+    placeholder: 'Name',
+    submit: async (name) => {
+      try {
+        const p = await data.createPlaylist(name);
+        S.playlists.unshift(p);
+        renderNav();
+        if (then) await then(p);
+        else openView({ type: 'playlist', id: p.id, uri: p.uri, name: p.name });
+      } catch (e) { fail(e); }
+    },
+  });
+}
+
+function openPlaylistPicker() {
+  const t = S.shown[S.sel] ?? S.now?.track;
+  if (!t) return toast('Select a track first', 1500);
+  showPicker({
+    title: `Add “${t.name}” to`,
+    placeholder: 'Choose a playlist…',
+    items: [
+      { label: '+ New playlist…', sticky: true, value: null },
+      ...S.playlists.filter(isEditable).map((p) => ({ label: p.name, value: p })),
+    ],
+    selected: 1,
+    choose: (it) => (it.value ? addTo(it.value, t) : newPlaylist((p) => addTo(p, t))),
+  });
+}
+
+function updatePlaylistActions() {
+  const p = curPlaylist();
+  $('plActions').hidden = !(p && isMine(p));
+  disarmDelete();
+}
+
+function renamePlaylist() {
+  const p = curPlaylist();
+  if (!p) return;
+  showPrompt({
+    title: 'Rename playlist',
+    value: p.name,
+    submit: async (name) => {
+      if (name === p.name) return;
+      try {
+        await data.renamePlaylist(p.id, name);
+        p.name = name;
+        S.view.name = name;
+        el.title.textContent = name;
+        renderNav();
+      } catch (e) { fail(e); }
+    },
+  });
+}
+
+// Destructive actions need a second press within a few seconds.
+let deleteArm = null;
+function disarmDelete() {
+  clearTimeout(deleteArm);
+  deleteArm = null;
+  $('plDelete').textContent = 'delete';
+}
+async function deletePlaylist() {
+  const p = curPlaylist();
+  if (!p) return;
+  if (!deleteArm) {
+    $('plDelete').textContent = 'click again to delete';
+    deleteArm = setTimeout(disarmDelete, 3000);
+    return;
+  }
+  disarmDelete();
+  try {
+    await data.deletePlaylist(p.uri);
+    S.playlists = S.playlists.filter((x) => x !== p);
+    toast(`Deleted “${p.name}” (can be restored at spotify.com/account)`, 5000);
+    openView({ type: 'liked' });
+  } catch (e) { fail(e); }
+}
+
+/** Re-render the (unfiltered or filtered) rows from S.raw and keep a selection. */
+function rebuild(sel) {
+  refilter();
+  setSel(sel);
+}
+
+let removeArm = null;
+async function removeSelected() {
+  const p = curPlaylist();
+  const t = S.shown[S.sel];
+  if (!p || !t || !isEditable(p)) return;
+  if (removeArm?.uri !== t.uri) {
+    clearTimeout(removeArm?.timer);
+    removeArm = { uri: t.uri, timer: setTimeout(() => (removeArm = null), 2500) };
+    return toast(`Press again to remove “${t.name}” from the playlist`, 2500);
+  }
+  clearTimeout(removeArm.timer);
+  removeArm = null;
+  const copies = S.raw.filter((x) => x.uri === t.uri).length;
+  try {
+    await data.removeFromPlaylist(p.id, [t.uri]);
+    const keep = S.sel;
+    S.raw = S.raw.filter((x) => x.uri !== t.uri);
+    S.total -= copies;
+    S.next = Math.max(0, S.next - copies); // later pages shift up by the removed rows
+    rebuild(Math.min(keep, S.shown.length - 1));
+    toast(copies > 1 ? `Removed all ${copies} copies of “${t.name}”` : `Removed “${t.name}”`, 2500);
+  } catch (e) { fail(e); }
+}
+
+// Moves are sent one at a time so rapid key presses apply in order.
+let moveChain = Promise.resolve();
+function moveSelected(dir) {
+  const p = curPlaylist();
+  const i = S.sel;
+  const j = i + dir;
+  // Row positions only match playlist positions while the list is unfiltered.
+  if (!p || !isEditable(p) || S.filter || i < 0 || j < 0 || j >= S.raw.length) return;
+  [S.raw[i], S.raw[j]] = [S.raw[j], S.raw[i]];
+  rebuild(j);
+  moveChain = moveChain
+    .then(() => data.moveInPlaylist(p.id, i, dir > 0 ? i + 2 : j))
+    .catch((e) => { fail(e); openView(S.view); }); // resync with what Spotify actually has
+}
+
+/* devices ---------------------------------------------------------- */
+const DEVICE_KIND = {
+  computer: 'computer', smartphone: 'phone', speaker: 'speaker', tv: 'tv', castvideo: 'cast', castaudio: 'cast',
+  avr: 'receiver', stb: 'set-top box', audiodongle: 'dongle', gameconsole: 'console', automobile: 'car',
+};
+
+async function openDevices() {
+  if (!S.player) return;
+  let list;
+  try { list = await S.player.devices(); } catch (e) { return fail(e); }
+  if (!list.length) return toast('No devices found – open Spotify on the one you want to play on', 3500);
+  showPicker({
+    title: 'Play on',
+    placeholder: 'Search devices…',
+    items: list.map((d) => ({
+      label: d.self ? `${d.name} (this device)` : d.name,
+      hint: d.restricted ? 'not accepting commands' : (DEVICE_KIND[d.type.toLowerCase()] ?? d.type.toLowerCase()),
+      active: d.active,
+      value: d,
+    })),
+    selected: Math.max(0, list.findIndex((d) => d.active)),
+    choose: async ({ value: d }) => {
+      if (d.restricted) return toast('That device does not accept commands from apps', 3000);
+      try {
+        await S.player.transfer(d.id, !!S.now && !S.now.paused);
+        toast(`Playing on ${d.name}`, 1500);
+      } catch (e) { fail(e); }
+    },
+  });
 }
 
 /* media keys / macOS "Now Playing" --------------------------------- */
@@ -432,7 +621,7 @@ function bind() {
 
   $('nav').onclick = (e) => {
     const b = e.target.closest('button.nav');
-    if (!b) return;
+    if (!b || b.id === 'newPl') return; // "new playlist" has its own handler
     const v = b.dataset.view;
     if (v === 'search') openView({ type: 'search', q: '' });
     else if (v === 'top') openView({ type: 'top', range: savedRange() });
@@ -509,12 +698,12 @@ function bind() {
     }
   });
 
-  // playlist picker
-  $('pkq').addEventListener('input', () => { P.sel = 0; renderPicker(); });
+  // picker overlay (lists and text prompts)
+  $('pkq').addEventListener('input', () => { if (P.mode === 'list') renderPicker(true); });
   $('pkq').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { e.preventDefault(); closePicker(); }
-    else if (e.key === 'Enter') { e.preventDefault(); chooseList(P.sel); }
-    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    else if (e.key === 'Enter') { e.preventDefault(); if (P.mode === 'prompt') submitPrompt(); else pickItem(P.sel); }
+    else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && P.mode === 'list') {
       e.preventDefault();
       P.sel = Math.min(Math.max(P.sel + (e.key === 'ArrowDown' ? 1 : -1), 0), P.items.length - 1);
       renderPicker();
@@ -522,8 +711,13 @@ function bind() {
   });
   $('pkList').addEventListener('click', (e) => {
     const it = e.target.closest('.pk-item');
-    if (it) chooseList(+it.dataset.i);
+    if (it) pickItem(+it.dataset.i);
   });
+
+  $('newPl').onclick = () => newPlaylist();
+  $('plRename').onclick = renamePlaylist;
+  $('plDelete').onclick = deletePlaylist;
+  $('devices').onclick = openDevices;
   $('picker').addEventListener('click', (e) => { if (e.target === $('picker')) closePicker(); });
 
   document.addEventListener('keydown', (e) => {
@@ -532,9 +726,14 @@ function bind() {
       if (step) { e.preventDefault(); setZoom(zoom + step); }
       else if (e.key === '0') { e.preventDefault(); setZoom(1); }
     }
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (!$('picker').hidden) return;
+    // The picker closes itself on Enter/Escape; those keys must not also reach the list below.
+    if (!$('picker').hidden || e.target.id === 'pkq') return;
     if (e.target === el.q || e.target.id === 'clientId') return;
+    if (e.altKey && !e.metaKey && !e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      return moveSelected(e.key === 'ArrowDown' ? 1 : -1);
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key;
     const handled = {
       ' ': () => S.player?.toggle(),
@@ -545,7 +744,8 @@ function bind() {
       ArrowLeft: () => seekTo(curPos() - 10_000),
       n: () => S.player?.next(), p: () => S.player?.prev(),
       s: toggleShuffle, r: cycleRepeat,
-      q: queueSelected, a: openPicker,
+      q: queueSelected, a: openPlaylistPicker, d: openDevices,
+      Backspace: removeSelected, Delete: removeSelected,
       '+': () => setVol(Math.min(100, +vol.value + 5)), '=': () => setVol(Math.min(100, +vol.value + 5)),
       '-': () => setVol(Math.max(0, +vol.value - 5)),
       l: toggleLike, t: cycleTheme,
@@ -569,7 +769,7 @@ async function start() {
   if (!DEMO) {
     const drm = await probeDrm();
     console.info('DRM key system:', drm);
-    if (!drm) toast('Den här webbvyn saknar DRM-stöd (EME) – Spotify-uppspelning fungerar troligen inte här.', 12000);
+    if (!drm) toast('This webview lacks DRM support (EME) – Spotify playback probably will not work here.', 12000);
   }
   try {
     S.player = await createPlayer({ onState: onPlayerState, onError: toast, volume: +store.get('vol', 50) / 100 });
@@ -598,7 +798,7 @@ async function start() {
   if (!auth.isLoggedIn()) return showSetup();
   if (!auth.hasCurrentScopes()) {
     auth.logout();
-    return showSetup('Nya funktioner kräver ny inloggning – klicka Anslut.');
+    return showSetup('New features require logging in again – click Connect.');
   }
   start();
 })();

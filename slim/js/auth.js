@@ -10,6 +10,7 @@ const SCOPES = [
   'playlist-read-collaborative',
   'user-library-read',
   'user-library-modify',
+  'user-follow-modify', // needed to remove (unfollow) a playlist via DELETE /me/library
   'user-top-read',
   'user-read-recently-played',
   'user-read-currently-playing',
@@ -66,7 +67,7 @@ export async function handleCallback() {
   if (!p.has('code') && !p.has('error')) return false;
   history.replaceState({}, '', location.pathname);
   if (p.has('error')) throw new Error(p.get('error'));
-  if (p.get('state') !== sessionStorage.getItem(K.state)) throw new Error('Ogiltigt state – försök igen');
+  if (p.get('state') !== sessionStorage.getItem(K.state)) throw new Error('Invalid state – try again');
   await tokenRequest({
     grant_type: 'authorization_code',
     code: p.get('code'),
@@ -82,7 +83,7 @@ async function tokenRequest(params) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: getClientId(), ...params }),
   });
-  if (!r.ok) throw new Error(`Tokenfel ${r.status}`);
+  if (!r.ok) throw new Error(`Token error ${r.status}`);
   const j = await r.json();
   const prev = loadTokens();
   saveTokens({

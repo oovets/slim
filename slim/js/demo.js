@@ -7,7 +7,7 @@ const pick = (a) => a[Math.floor(rnd() * a.length)];
 const W1 = ['Midnight', 'Golden', 'Slow', 'Paper', 'Winter', 'Neon', 'Quiet', 'Broken', 'Summer', 'Velvet', 'Distant', 'Hollow', 'Electric', 'Soft', 'Last'];
 const W2 = ['Hours', 'Light', 'Rain', 'Machine', 'Season', 'Harbor', 'Echo', 'Room', 'Signal', 'Garden', 'Train', 'Weather', 'Mirror', 'Tide', 'Highway'];
 const ARTISTS = ['Lina Ahrén', 'The Pale Fields', 'Noor', 'Kasper & Sons', 'Mira Vale', 'Orbit Club', 'Henrik Dahl', 'Saga Lund', 'Low Tide', 'Ebba Strand', 'Atlas Bloom'];
-const ALBUMS = ['Nattskift', 'Fält', 'Sunday Tapes', 'Vågor', 'Second Light', 'Kartor', 'Halvlek', 'Evenemang'];
+const ALBUMS = ['Night Shift', 'Fields', 'Sunday Tapes', 'Waves', 'Second Light', 'Maps', 'Half Time', 'Events'];
 
 const registry = new Map();
 let n = 0;
@@ -26,9 +26,9 @@ function makeTrack() {
 }
 const makeList = (len) => Array.from({ length: len }, makeTrack);
 
-const PLAYLISTS = ['Morgon', 'Fokus', 'Roadtrip', 'Gamla favoriter', 'Jazz i köket', 'Träning', 'Kvällslugn', 'Nytt & nyfiket']
+const PLAYLISTS = ['Morning', 'Focus', 'Roadtrip', 'Old favourites', 'Jazz in the kitchen', 'Workout', 'Evening calm', 'New & curious']
   .map((name, i) => ({
-    id: `p${i}`, uri: `spotify:playlist:demo${i}`, name, owner: 'du', ownerId: 'me', collaborative: false,
+    id: `p${i}`, uri: `spotify:playlist:demo${i}`, name, owner: 'you', ownerId: 'me', collaborative: false,
     tracks: makeList(18 + Math.floor(rnd() * 40)),
   }));
 // Mimics a playlist owned by someone else: Spotify's API refuses to list its tracks.
@@ -48,7 +48,7 @@ const single = (tracks) => ({ tracks, total: tracks.length, hasMore: false, next
 // Playback queue shared by the data functions and the fake player.
 const Q = { queue: [], idx: -1, userCount: 0 };
 
-export const getMe = async () => ({ id: 'me', name: 'du' });
+export const getMe = async () => ({ id: 'me', name: 'you' });
 export const getPlaylists = async () => (await delay(), PLAYLISTS.map(({ tracks, ...p }) => p));
 export const getLiked = async (offset = 0) => (await delay(), slice(LIKED, offset, 50));
 export const getPlaylistTracks = async (id, offset = 0) => {
@@ -74,6 +74,29 @@ export const addToPlaylist = async (id, uris) => {
   await delay(60);
   PLAYLISTS.find((p) => p.id === id).tracks.push(...uris.map((u) => registry.get(u)));
 };
+export const createPlaylist = async (name) => {
+  await delay(80);
+  const pl = { id: `p${PLAYLISTS.length}`, uri: `spotify:playlist:demo${PLAYLISTS.length}`, name, owner: 'you', ownerId: 'me', collaborative: false, tracks: [] };
+  PLAYLISTS.push(pl);
+  const { tracks, ...info } = pl;
+  return info;
+};
+export const renamePlaylist = async (id, name) => { await delay(60); PLAYLISTS.find((p) => p.id === id).name = name; };
+export const deletePlaylist = async (uri) => {
+  await delay(60);
+  PLAYLISTS.splice(PLAYLISTS.findIndex((p) => p.uri === uri), 1);
+};
+export const removeFromPlaylist = async (id, uris) => {
+  await delay(60);
+  const pl = PLAYLISTS.find((p) => p.id === id);
+  pl.tracks = pl.tracks.filter((t) => !uris.includes(t.uri));
+};
+export const moveInPlaylist = async (id, from, before) => {
+  await delay(60);
+  const { tracks } = PLAYLISTS.find((p) => p.id === id);
+  const [t] = tracks.splice(from, 1);
+  tracks.splice(before > from ? before - 1 : before, 0, t);
+};
 export const isSaved = async (uri) => saved.has(uri);
 export const save = async (uri) => void saved.add(uri);
 export const unsave = async (uri) => void saved.delete(uri);
@@ -84,6 +107,13 @@ export async function createPlayer({ onState }) {
   let last = performance.now();
   let shuffle = false;
   let repeat = 0;
+  let active = 'demo'; // which fake device is "playing"
+  const DEVICES = [
+    { id: 'demo', name: 'slim', type: 'Computer', self: true },
+    { id: 'phone', name: "Stefan's iPhone", type: 'Smartphone' },
+    { id: 'kitchen', name: 'Kitchen', type: 'Speaker' },
+    { id: 'tv', name: 'Living room TV', type: 'TV', restricted: true },
+  ];
 
   const cur = () => registry.get(Q.queue[Q.idx]);
   const sync = () => {
@@ -95,6 +125,7 @@ export async function createPlayer({ onState }) {
     const t = cur();
     onState(t && {
       paused, position, duration: t.ms, shuffle, repeat, at: performance.now(),
+      remote: active !== 'demo', device: DEVICES.find((d) => d.id === active),
       track: { uri: t.uri, name: t.name, artists: t.artists },
     });
   };
@@ -133,5 +164,15 @@ export async function createPlayer({ onState }) {
     deviceId: () => 'demo',
     async setShuffle(on) { shuffle = on; emit(); },
     async setRepeat(mode) { repeat = mode; emit(); },
+    async devices() {
+      await delay(80);
+      return DEVICES.map((d) => ({ ...d, active: d.id === active && !!cur() }));
+    },
+    async transfer(id, play = true) {
+      await delay(80);
+      active = id;
+      if (play && cur()) { sync(); paused = false; }
+      emit();
+    },
   };
 }
